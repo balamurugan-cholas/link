@@ -1,0 +1,39 @@
+name: Build Mac Version
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to click "Run workflow" manually in GitHub Actions
+
+jobs:
+  build-mac:
+    # Use the latest macOS runner to compile native modules for Mac
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        # This will run your 'postinstall' script automatically
+        run: npm install
+
+      - name: Rebuild Native Modules
+        # Ensures better-sqlite3 and node-llama-cpp are compiled for Mac
+        run: npm run rebuild:native
+
+      - name: Build and Package Mac (x64 and arm64)
+        # Executes your specific package script from package.json
+        run: npm run package:mac:all
+
+      - name: Upload Mac Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-mac-build
+          path: release/*.zip
