@@ -5,14 +5,15 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Fixes the Node 24 warning at the top level
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-mac:
     runs-on: macos-latest
     env:
-      # This tells GitHub to stop worrying about the Node 20 deprecation
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      # This stops the build from crashing if you don't have an Apple Certificate
-      CSC_IDENTITY_AUTODISCOVERY: false 
+      CSC_IDENTITY_AUTODISCOVERY: false # Disables Apple certificate requirement
 
     steps:
       - name: Check out repository
@@ -21,22 +22,24 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 
+          node-version: 24 # Using the latest stable Node
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install System Dependencies (REQUIRED for Llama-cpp)
+        run: brew install cmake
+
+      - name: Install Project Dependencies
         run: npm install
 
       - name: Rebuild Native Modules
-        # This is critical for better-sqlite3 and node-llama-cpp
         run: npm run rebuild:native
 
-      - name: Build and Package Mac
-        # We add --p never to ensure it doesn't try to publish to GitHub Releases yet
-        run: npm run package:mac:all -- --publish never
+      - name: Build and Package Mac (Apple Silicon ONLY for stability)
+        # We manually run electron-builder for arm64 to prevent cross-compile crashes
+        run: npx electron-builder --mac zip --arm64 --publish never
 
       - name: Upload Mac Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: link-mac-build
+          name: link-mac-arm64
           path: release/*.zip
