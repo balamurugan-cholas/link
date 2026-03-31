@@ -9,31 +9,31 @@ jobs:
   build-mac:
     runs-on: macos-latest
     env:
-      # Fixes the Node.js 24 warning you saw
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
-      # This skips Apple's strict code-signing check for now 
-      # (Use this only for testing; you need a certificate for a real release)
+      # This tells GitHub to stop worrying about the Node 20 deprecation
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      # This stops the build from crashing if you don't have an Apple Certificate
       CSC_IDENTITY_AUTODISCOVERY: false 
 
     steps:
-      # Updated to v6 to support Node 24
       - name: Check out repository
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v4
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # Moving to a newer Node version
+          node-version: 22 
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm install
 
       - name: Rebuild Native Modules
+        # This is critical for better-sqlite3 and node-llama-cpp
         run: npm run rebuild:native
 
       - name: Build and Package Mac
-        run: npm run package:mac:all
+        # We add --p never to ensure it doesn't try to publish to GitHub Releases yet
+        run: npm run package:mac:all -- --publish never
 
       - name: Upload Mac Build Artifacts
         uses: actions/upload-artifact@v4
